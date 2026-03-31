@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
 set -e
 
-INSTALL_DIR="$HOME/.local/share/autoclicker"
-ICON="$HOME/.local/share/icons/autoclicker.png"
-DESKTOP="$HOME/.local/share/applications/autoclicker.desktop"
-CONFIG_DIR="$HOME/.config/autoclicker"
+INSTALL_DIR="$HOME/.local/share/ohk"
+ICON="$HOME/.local/share/icons/ohk.png"
+DESKTOP="$HOME/.local/share/applications/ohk.desktop"
+CONFIG_DIR="$HOME/.config/ohk"
 
-echo "=== Autoclicker Uninstaller ==="
+echo "=== OHK (Onyx Hot Keys) Uninstaller ==="
 echo ""
 
 rm -rf "$INSTALL_DIR" && echo "Removed $INSTALL_DIR"
 rm -f "$ICON" && echo "Removed $ICON"
 rm -f "$DESKTOP" && echo "Removed $DESKTOP"
 
-read -rp "Remove config (keybinds) too? [y/N] " yn
+read -rp "Remove config (keybinds, macros) too? [y/N] " yn
 case "$yn" in
     [Yy]*) rm -rf "$CONFIG_DIR" && echo "Removed $CONFIG_DIR" ;;
     *) echo "Kept $CONFIG_DIR" ;;

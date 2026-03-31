@@ -1,14 +1,14 @@
-# Autoclicker
+# OHK — Onyx Hot Keys
 
-A simple autoclicker for Linux with a GUI and rebindable global hotkeys. Works on both X11 and Wayland.
+A macro and automation tool for Linux by **ONYX Development**. Think AutoHotKey, but for Linux — works on both X11 and Wayland.
 
 ## Features
 
-- **Hold-to-click** — hold a key to spam left or right clicks
-- **Global hotkeys** — works even when another window is focused (via evdev)
-- **Rebindable keys** — change hotkeys from the GUI, saved across sessions
-- **Configurable CPS** — adjust clicks per second (1-200) from the GUI or CLI
-- **Desktop integration** — shows up in your app launcher after install
+- **Autoclicker** — hold a key to spam left or right clicks, configurable CPS (1-200)
+- **Macro Recording** — record keyboard and mouse sequences, replay them with a hotkey
+- **Global Hotkeys** — works even when another window is focused (via evdev)
+- **Rebindable Keys** — change any hotkey from the GUI, saved across sessions
+- **Desktop Integration** — shows up in your app launcher after install
 
 ## Default Hotkeys
 
@@ -18,6 +18,7 @@ A simple autoclicker for Linux with a GUI and rebindable global hotkeys. Works o
 | 2 (hold) | Spam right-click |
 | 3 | Pause / Resume |
 | 4 | Quit |
+| F9 | Start / Stop recording |
 
 All hotkeys can be rebound from the GUI.
 
@@ -40,27 +41,37 @@ All hotkeys can be rebound from the GUI.
 sudo usermod -aG input $USER
 
 # Clone and install
-git clone https://github.com/YOUR_USERNAME/autoclicker.git
-cd autoclicker
+git clone https://github.com/AndrewCromar/ohk.git
+cd ohk
 chmod +x install.sh
 ./install.sh
 ```
 
-After install, search for **"Autoclicker"** in your app launcher (KRunner, Rofi, etc).
+After install, search for **"OHK"** in your app launcher (KRunner, Rofi, etc).
 
 ## Run without installing
 
 ```bash
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
-.venv/bin/python autoclicker.py
+.venv/bin/python -m ohk
 ```
 
 ### CLI options
 
 ```
-autoclicker.py [--cps N]    # set clicks per second (default: 20)
+python -m ohk [--cps N]    # set default clicks per second (default: 20)
 ```
+
+## Macros
+
+1. Press **F9** (or your record key) to start recording
+2. Perform your actions (key presses, mouse clicks)
+3. Press **F9** again to stop — you'll be prompted to name the macro
+4. Assign a hotkey to the macro from the Macros tab
+5. Press the hotkey anytime to replay the macro
+
+Macros are saved to `~/.config/ohk/macros/`.
 
 ## Uninstall
 
@@ -71,4 +82,10 @@ chmod +x uninstall.sh
 
 ## Config
 
-Keybinds are saved to `~/.config/autoclicker/keybinds.json`.
+All settings are stored in `~/.config/ohk/`:
+- `keybinds.json` — hotkey assignments
+- `macros/` — saved macro files
+
+---
+
+Made by **ONYX Development**

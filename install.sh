@@ -2,11 +2,11 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-INSTALL_DIR="$HOME/.local/share/autoclicker"
+INSTALL_DIR="$HOME/.local/share/ohk"
 ICON_DIR="$HOME/.local/share/icons"
 DESKTOP_DIR="$HOME/.local/share/applications"
 
-echo "=== Autoclicker Installer ==="
+echo "=== OHK (Onyx Hot Keys) Installer ==="
 echo ""
 
 # Check for python3 and tk
@@ -42,7 +42,7 @@ fi
 # Copy files to install dir
 echo "Installing to $INSTALL_DIR ..."
 mkdir -p "$INSTALL_DIR"
-cp "$SCRIPT_DIR/autoclicker.py" "$INSTALL_DIR/"
+cp -r "$SCRIPT_DIR/ohk" "$INSTALL_DIR/"
 cp "$SCRIPT_DIR/requirements.txt" "$INSTALL_DIR/"
 
 # Create venv and install deps
@@ -64,21 +64,22 @@ cursor = [
     (40*s, 34*s), (8*s, 4*s),
 ]
 d.polygon(cursor, fill=(30, 30, 30, 255), outline=(255, 255, 255, 255), width=max(1, int(2*s)))
-img.save('$ICON_DIR/autoclicker.png')
+img.save('$ICON_DIR/ohk.png')
 "
 
 # Create .desktop entry
 echo "Creating desktop entry ..."
 mkdir -p "$DESKTOP_DIR"
-cat > "$DESKTOP_DIR/autoclicker.desktop" <<EOF
+cat > "$DESKTOP_DIR/ohk.desktop" <<EOF
 [Desktop Entry]
-Name=Autoclicker
-Comment=Autoclicker with rebindable global hotkeys
-Exec=$INSTALL_DIR/.venv/bin/python $INSTALL_DIR/autoclicker.py
-Icon=$ICON_DIR/autoclicker.png
+Name=OHK
+Comment=Onyx Hot Keys — Macro & Automation for Linux
+Exec=$INSTALL_DIR/.venv/bin/python -m ohk
+Icon=$ICON_DIR/ohk.png
 Type=Application
 Categories=Utility;
 Terminal=false
+StartupWMClass=ohk
 EOF
 
 # Update desktop database
@@ -86,5 +87,5 @@ update-desktop-database "$DESKTOP_DIR" 2>/dev/null || true
 
 echo ""
 echo "=== Installed! ==="
-echo "You can now search for 'Autoclicker' in your app launcher."
-echo "Or run directly: $INSTALL_DIR/.venv/bin/python $INSTALL_DIR/autoclicker.py"
+echo "You can now search for 'OHK' in your app launcher."
+echo "Or run directly: $INSTALL_DIR/.venv/bin/python -m ohk"
