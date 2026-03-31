@@ -13,8 +13,6 @@ ADDONS_DIR = os.path.join(CONFIG_DIR, "addons")
 DEFAULT_KEYBINDS = {
     "left_click": ecodes.KEY_1,
     "right_click": ecodes.KEY_2,
-    "pause": ecodes.KEY_3,
-    "quit": ecodes.KEY_4,
     "record": ecodes.KEY_F9,
 }
 
