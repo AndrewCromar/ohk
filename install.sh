@@ -75,6 +75,7 @@ cat > "$DESKTOP_DIR/ohk.desktop" <<EOF
 Name=OHK
 Comment=Onyx Hot Keys — Macro & Automation for Linux
 Exec=$INSTALL_DIR/.venv/bin/python -m ohk
+Path=$INSTALL_DIR
 Icon=$ICON_DIR/ohk.png
 Type=Application
 Categories=Utility;
