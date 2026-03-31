@@ -73,6 +73,53 @@ python -m ohk [--cps N]    # set default clicks per second (default: 20)
 
 Macros are saved to `~/.config/ohk/macros/`.
 
+## Addons
+
+OHK supports addons — self-contained Python scripts that add new tabs and features.
+
+### Installing an addon
+
+Drop an addon folder into `~/.config/ohk/addons/`:
+
+```
+~/.config/ohk/addons/
+└── my_addon/
+    └── main.py
+```
+
+Then enable it from the **Addons** tab in OHK and restart.
+
+### Creating an addon
+
+Create a `main.py` with a class that extends `OHKAddon`:
+
+```python
+import tkinter as tk
+from ohk.addon import OHKAddon
+
+class MyAddon(OHKAddon):
+    name = "My Addon"
+    description = "What it does"
+    version = "1.0"
+
+    def build_tab(self, parent):
+        frame = tk.Frame(parent, padx=12, pady=12)
+        tk.Label(frame, text="Hello!").pack()
+        return frame
+
+    def on_key_event(self, code, value):
+        # React to global key events (value: 0=release, 1=press)
+        pass
+
+    def get_settings(self):
+        return {"my_setting": "value"}  # persisted across restarts
+
+    def load_settings(self, data):
+        self.my_setting = data.get("my_setting", "default")
+```
+
+An example addon (`key_monitor`) is included with the install.
+
 ## Uninstall
 
 ```bash
@@ -85,6 +132,8 @@ chmod +x uninstall.sh
 All settings are stored in `~/.config/ohk/`:
 - `keybinds.json` — hotkey assignments
 - `macros/` — saved macro files
+- `addons/` — installed addons
+- `addon_settings.json` — addon enable/disable state and settings
 
 ---
 

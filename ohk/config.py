@@ -8,6 +8,7 @@ from evdev import ecodes
 CONFIG_DIR = os.path.expanduser("~/.config/ohk")
 KEYBINDS_FILE = os.path.join(CONFIG_DIR, "keybinds.json")
 MACROS_DIR = os.path.join(CONFIG_DIR, "macros")
+ADDONS_DIR = os.path.join(CONFIG_DIR, "addons")
 
 DEFAULT_KEYBINDS = {
     "left_click": ecodes.KEY_1,

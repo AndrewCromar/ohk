@@ -50,6 +50,14 @@ echo "Setting up Python virtual environment ..."
 python3 -m venv "$INSTALL_DIR/.venv"
 "$INSTALL_DIR/.venv/bin/pip" install --quiet -r "$INSTALL_DIR/requirements.txt"
 
+# Create addons directory and copy example addons
+echo "Setting up addons ..."
+ADDONS_DIR="$HOME/.config/ohk/addons"
+mkdir -p "$ADDONS_DIR"
+if [ -d "$SCRIPT_DIR/addons" ]; then
+    cp -r "$SCRIPT_DIR/addons/"* "$ADDONS_DIR/" 2>/dev/null || true
+fi
+
 # Generate icon
 echo "Generating icon ..."
 mkdir -p "$ICON_DIR"
