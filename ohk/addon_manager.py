@@ -71,23 +71,61 @@ class AddonManager:
                 self._instantiate(info)
 
     def enable(self, folder_name):
-        """Enable an addon (takes effect on next restart)."""
+        """Enable an addon and instantiate it live."""
         if folder_name not in self.addons:
             return
         info = self.addons[folder_name]
         info.enabled = True
+        if info.instance is None:
+            self._instantiate(info)
         self._save_enabled()
 
     def disable(self, folder_name):
-        """Disable an addon (takes effect on next restart)."""
+        """Disable an addon and clean up its instance."""
         if folder_name not in self.addons:
             return
         info = self.addons[folder_name]
-        info.enabled = False
         if info.instance:
+            try:
+                settings = info.instance.get_settings()
+                if settings:
+                    if "settings" not in self._settings:
+                        self._settings["settings"] = {}
+                    self._settings["settings"][folder_name] = settings
+            except Exception:
+                pass
             info.instance.on_disable()
             info.instance = None
+        info.enabled = False
         self._save_enabled()
+
+    def rescan(self):
+        """Re-scan addons directory for new/removed addons."""
+        addons_dir = os.path.join(config.CONFIG_DIR, "addons")
+        if not os.path.isdir(addons_dir):
+            return
+
+        current_folders = set()
+        for folder_name in sorted(os.listdir(addons_dir)):
+            folder_path = os.path.join(addons_dir, folder_name)
+            main_path = os.path.join(folder_path, "main.py")
+            if not os.path.isfile(main_path):
+                continue
+            current_folders.add(folder_name)
+            if folder_name not in self.addons:
+                addon_class = self._load_addon_class(folder_name, main_path)
+                if addon_class:
+                    info = AddonInfo(folder_name, addon_class)
+                    info.enabled = folder_name in self._settings.get("enabled", [])
+                    self.addons[folder_name] = info
+
+        # Remove addons whose folders were deleted
+        removed = [k for k in self.addons if k not in current_folders]
+        for k in removed:
+            info = self.addons[k]
+            if info.instance:
+                info.instance.on_disable()
+            del self.addons[k]
 
     def get_enabled_addons(self):
         """Return list of AddonInfo for enabled addons with live instances."""

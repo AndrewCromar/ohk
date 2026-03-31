@@ -208,13 +208,16 @@ class OHKApp:
         self._build_addons_tab(notebook)
 
         # Build tabs for enabled addons
-        for info in self.addon_manager.get_enabled_addons():
-            try:
-                tab = info.instance.build_tab(notebook)
-                if tab is not None:
-                    notebook.add(tab, text=info.name)
-            except Exception as e:
-                print(f"Error building tab for addon '{info.name}': {e}")
+        self._addon_tabs = {}
+        for folder_name, info in self.addon_manager.addons.items():
+            if info.enabled and info.instance:
+                try:
+                    tab = info.instance.build_tab(notebook)
+                    if tab is not None:
+                        notebook.add(tab, text=info.name)
+                        self._addon_tabs[folder_name] = tab
+                except Exception as e:
+                    print(f"Error building tab for addon '{info.name}': {e}")
 
     def _build_clicker_tab(self, notebook):
         frame = tk.Frame(notebook, padx=12, pady=12)
@@ -357,13 +360,17 @@ class OHKApp:
             row=row, column=0, columnspan=2, pady=(16, 0))
 
     def _build_addons_tab(self, notebook):
-        frame = tk.Frame(notebook, padx=12, pady=12)
-        notebook.add(frame, text="Addons")
+        self._addons_frame = tk.Frame(notebook, padx=12, pady=12)
+        notebook.add(self._addons_frame, text="Addons")
 
-        tk.Label(frame, text="Installed Addons", font=("monospace", 11, "bold")).pack(anchor="w")
+        # Rescan when tab gets focus
+        notebook.bind("<<NotebookTabChanged>>", self._on_tab_changed)
+
+        tk.Label(self._addons_frame, text="Installed Addons",
+                 font=("monospace", 11, "bold")).pack(anchor="w")
 
         # Addon list
-        list_frame = tk.Frame(frame)
+        list_frame = tk.Frame(self._addons_frame)
         list_frame.pack(fill="both", expand=True, pady=(8, 0))
 
         self._addon_listbox = tk.Listbox(list_frame, font=("monospace", 10), height=6, width=35)
@@ -375,12 +382,12 @@ class OHKApp:
         self._addon_listbox.config(yscrollcommand=scrollbar.set)
 
         # Addon info
-        self._addon_info = tk.Label(frame, text="Select an addon to see details",
+        self._addon_info = tk.Label(self._addons_frame, text="Select an addon to see details",
                                      font=("monospace", 9), fg="#666666", justify="left", anchor="w")
         self._addon_info.pack(fill="x", pady=(6, 0))
 
         # Buttons
-        btn_frame = tk.Frame(frame)
+        btn_frame = tk.Frame(self._addons_frame)
         btn_frame.pack(fill="x", pady=(8, 0))
 
         self._addon_enable_btn = tk.Button(btn_frame, text="Enable", font=("monospace", 9),
@@ -390,11 +397,20 @@ class OHKApp:
         tk.Button(btn_frame, text="Open Addons Folder", font=("monospace", 9),
                   command=self._open_addons_folder).pack(side="left", padx=(0, 4))
 
-        # Note
-        tk.Label(frame, text="Enable/disable takes effect on restart",
-                 font=("monospace", 8), fg="#999999").pack(anchor="w", pady=(8, 0))
-
         self._refresh_addon_list()
+        # Track which addon tabs exist so we can add/remove them
+        self._addon_tabs = {}  # folder_name -> tab widget
+
+    def _on_tab_changed(self, _event):
+        """Rescan addons when the Addons tab gets focus."""
+        try:
+            current = self._notebook.index(self._notebook.select())
+            addons_idx = self._notebook.index(self._addons_frame)
+            if current == addons_idx:
+                self.addon_manager.rescan()
+                self._refresh_addon_list()
+        except Exception:
+            pass
 
     def _refresh_addon_list(self):
         self._addon_listbox.delete(0, tk.END)
@@ -419,9 +435,22 @@ class OHKApp:
         folder_name = list(self.addon_manager.addons.keys())[sel[0]]
         info = self.addon_manager.addons[folder_name]
         if info.enabled:
+            # Disable — remove tab if it exists
             self.addon_manager.disable(folder_name)
+            if folder_name in self._addon_tabs:
+                self._notebook.forget(self._addon_tabs[folder_name])
+                del self._addon_tabs[folder_name]
         else:
+            # Enable — instantiate and add tab live
             self.addon_manager.enable(folder_name)
+            if info.instance:
+                try:
+                    tab = info.instance.build_tab(self._notebook)
+                    if tab is not None:
+                        self._notebook.add(tab, text=info.name)
+                        self._addon_tabs[folder_name] = tab
+                except Exception as e:
+                    print(f"Error building tab for addon '{info.name}': {e}")
         self._refresh_addon_list()
         self._addon_enable_btn.config(text="Disable" if info.enabled else "Enable")
 
