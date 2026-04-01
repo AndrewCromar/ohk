@@ -10,6 +10,7 @@ import tkinter as tk
 from evdev import ecodes
 from ohk import config
 from ohk.addon import OHKAddon
+from ohk.combo import combo_active, combo_name
 
 
 def _run_kwin_script(js_code):
@@ -109,9 +110,11 @@ class CenterWindowAddon(OHKAddon):
         super().__init__(app)
         self._status_var = None
         self._bind_btn = None
-        self._key = DEFAULT_KEY
+        self._keys = [DEFAULT_KEY]  # combo (list of keycodes)
         self._waiting_for_click = False
         self._rebinding = False
+        self._rebind_keys = []
+        self._rebind_timer = None
 
     def build_tab(self, parent):
         frame = tk.Frame(parent, padx=12, pady=12)
@@ -130,7 +133,7 @@ class CenterWindowAddon(OHKAddon):
         kb_frame.pack(fill="x", pady=(0, 8))
 
         tk.Label(kb_frame, text="Hotkey:", font=("monospace", 10)).pack(side="left")
-        self._bind_btn = tk.Button(kb_frame, text=config.key_name(self._key),
+        self._bind_btn = tk.Button(kb_frame, text=combo_name(self._keys),
                                     font=("monospace", 10), width=12,
                                     command=self._start_rebind)
         self._bind_btn.pack(side="left", padx=(8, 0))
@@ -142,28 +145,56 @@ class CenterWindowAddon(OHKAddon):
 
         return frame
 
-    def on_key_event(self, code, value):
-        # Rebinding mode
+    def on_key_event(self, code, value, held_keys=frozenset()):
+        # Rebinding mode — collect combo
         if self._rebinding and value == 1:
-            self._key = code
-            self._rebinding = False
+            from evdev import ecodes as ec
+            if code == ec.KEY_ESC:
+                self._rebinding = False
+                self._rebind_keys = []
+                if self._rebind_timer:
+                    self._rebind_timer.cancel()
+                try:
+                    self.app.root.after(0, self._refresh_bind_btn)
+                except Exception:
+                    pass
+                return
+
+            if code not in self._rebind_keys:
+                self._rebind_keys.append(code)
             try:
-                self.app.root.after(0, self._refresh_bind_btn)
+                display = combo_name(self._rebind_keys) + "..."
+                self.app.root.after(0, lambda: self._bind_btn.config(text=display, fg="#bf360c"))
             except Exception:
                 pass
+
+            if self._rebind_timer:
+                self._rebind_timer.cancel()
+            self._rebind_timer = threading.Timer(0.4, self._finish_rebind)
+            self._rebind_timer.daemon = True
+            self._rebind_timer.start()
             return
 
         # Waiting for click to pick a window
         if self._waiting_for_click:
-            # Listen for mouse button press (BTN_LEFT = 272 in evdev)
             if code == 272 and value == 1:
                 self._waiting_for_click = False
                 threading.Thread(target=self._center_under_cursor, daemon=True).start()
             return
 
         # Hotkey: center the focused window instantly
-        if code == self._key and value == 1:
+        if value == 1 and combo_active(held_keys, self._keys):
             threading.Thread(target=self._center_active, daemon=True).start()
+
+    def _finish_rebind(self):
+        self._keys = list(self._rebind_keys)
+        self._rebind_keys = []
+        self._rebinding = False
+        self._rebind_timer = None
+        try:
+            self.app.root.after(0, self._refresh_bind_btn)
+        except Exception:
+            pass
 
     def _start_pick(self):
         """Enter pick mode — next click will center that window."""
@@ -202,10 +233,13 @@ class CenterWindowAddon(OHKAddon):
 
     def _refresh_bind_btn(self):
         if self._bind_btn:
-            self._bind_btn.config(text=config.key_name(self._key), fg="#333333")
+            self._bind_btn.config(text=combo_name(self._keys), fg="#333333")
 
     def get_settings(self):
-        return {"key": self._key}
+        return {"keys": self._keys}
 
     def load_settings(self, data):
-        self._key = data.get("key", DEFAULT_KEY)
+        keys = data.get("keys", data.get("key", DEFAULT_KEY))
+        if isinstance(keys, int):
+            keys = [keys]
+        self._keys = keys

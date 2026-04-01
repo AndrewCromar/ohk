@@ -11,10 +11,19 @@ MACROS_DIR = os.path.join(CONFIG_DIR, "macros")
 ADDONS_DIR = os.path.join(CONFIG_DIR, "addons")
 
 DEFAULT_KEYBINDS = {
-    "left_click": ecodes.KEY_1,
-    "right_click": ecodes.KEY_2,
-    "record": ecodes.KEY_F9,
+    "left_click": [ecodes.KEY_1],
+    "right_click": [ecodes.KEY_2],
+    "record": [ecodes.KEY_F9],
 }
+
+
+def _normalize(value):
+    """Ensure a keybind value is a list (backward compat from single int)."""
+    if isinstance(value, int):
+        return [value]
+    if isinstance(value, list):
+        return value
+    return [value]
 
 
 def key_name(code):
@@ -27,11 +36,20 @@ def key_name(code):
     return str(name)
 
 
+def combo_name(combo):
+    """Human-readable display for a combo keybind (list of keycodes)."""
+    if isinstance(combo, int):
+        return key_name(combo)
+    if not combo:
+        return "(none)"
+    return "+".join(key_name(k) for k in combo)
+
+
 def load_keybinds():
     try:
         with open(KEYBINDS_FILE) as f:
             data = json.load(f)
-        return {k: data.get(k, v) for k, v in DEFAULT_KEYBINDS.items()}
+        return {k: _normalize(data.get(k, v)) for k, v in DEFAULT_KEYBINDS.items()}
     except (FileNotFoundError, json.JSONDecodeError, KeyError):
         return dict(DEFAULT_KEYBINDS)
 

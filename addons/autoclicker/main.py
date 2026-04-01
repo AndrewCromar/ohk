@@ -5,6 +5,7 @@ import tkinter as tk
 from ohk import config
 from ohk.addon import OHKAddon
 from ohk.clicker import Autoclicker, STATE_IDLE, STATE_LEFT, STATE_RIGHT, STATE_PAUSED
+from ohk.combo import combo_active, combo_name
 
 
 class AutoclickerAddon(OHKAddon):
@@ -69,7 +70,7 @@ class AutoclickerAddon(OHKAddon):
         for action, label_text in [("left_click", "Left Click:"), ("right_click", "Right Click:")]:
             tk.Label(frame, text=label_text, font=("monospace", 10)).grid(row=row, column=0,
                                                                            sticky="w", pady=(4, 0))
-            btn = tk.Button(frame, text=config.key_name(self.keybinds[action]),
+            btn = tk.Button(frame, text=combo_name(self.keybinds[action]),
                             font=("monospace", 10), width=12,
                             command=lambda a=action: self.app.start_rebind(a))
             btn.grid(row=row, column=1, sticky="w", padx=(8, 0), pady=(4, 0))
@@ -87,7 +88,7 @@ class AutoclickerAddon(OHKAddon):
         self._refresh()
         return frame
 
-    def on_key_event(self, code, value):
+    def on_key_event(self, code, value, held_keys=frozenset()):
         kb = self.keybinds
         state = self.clicker.get_state()
 
@@ -95,18 +96,23 @@ class AutoclickerAddon(OHKAddon):
         released = value == 0
 
         changed = False
-        if code == kb.get("left_click"):
-            if pressed:
+        lc = kb.get("left_click", [])
+        rc = kb.get("right_click", [])
+
+        if pressed and combo_active(held_keys, lc):
+            if state != STATE_LEFT:
                 self.clicker.set_state(STATE_LEFT)
                 changed = True
-            elif released and state == STATE_LEFT:
-                self.clicker.set_state(STATE_IDLE)
-                changed = True
-        elif code == kb.get("right_click"):
-            if pressed:
+        elif pressed and combo_active(held_keys, rc):
+            if state != STATE_RIGHT:
                 self.clicker.set_state(STATE_RIGHT)
                 changed = True
-            elif released and state == STATE_RIGHT:
+        elif released:
+            # Stop if any key in the active combo was released
+            if state == STATE_LEFT and code in lc:
+                self.clicker.set_state(STATE_IDLE)
+                changed = True
+            elif state == STATE_RIGHT and code in rc:
                 self.clicker.set_state(STATE_IDLE)
                 changed = True
 
@@ -133,10 +139,10 @@ class AutoclickerAddon(OHKAddon):
             if self.app.rebinding == action:
                 btn.config(text="Press a key...", fg="#bf360c")
             else:
-                btn.config(text=config.key_name(self.keybinds[action]), fg="#333333")
+                btn.config(text=combo_name(self.keybinds[action]), fg="#333333")
 
-        lc = config.key_name(self.keybinds["left_click"])
-        rc = config.key_name(self.keybinds["right_click"])
+        lc = combo_name(self.keybinds["left_click"])
+        rc = combo_name(self.keybinds["right_click"])
         self._clicker_legend.config(text=f"{lc}(hold)=left | {rc}(hold)=right")
 
     def _on_cps_change(self, *_args):

@@ -6,6 +6,7 @@ from tkinter import ttk, messagebox, simpledialog
 from evdev import ecodes
 from ohk import config
 from ohk.addon import OHKAddon
+from ohk.combo import combo_active, combo_name
 from ohk.macros import MacroRecorder, MacroPlayer
 
 
@@ -610,7 +611,7 @@ class MacrosAddon(OHKAddon):
         tk.Frame(frame, height=1, bg="#cccccc").grid(row=6, column=0, columnspan=3,
                                                       sticky="we", pady=(10, 6))
         tk.Label(frame, text="Record Key:", font=("monospace", 10)).grid(row=7, column=0, sticky="w")
-        btn = tk.Button(frame, text=config.key_name(self.keybinds["record"]),
+        btn = tk.Button(frame, text=combo_name(self.keybinds["record"]),
                         font=("monospace", 10), width=12,
                         command=lambda: self.app.start_rebind("record"))
         btn.grid(row=7, column=1, sticky="w", padx=(8, 0))
@@ -620,12 +621,14 @@ class MacrosAddon(OHKAddon):
         self._refresh_macro_list()
         return frame
 
-    def on_key_event(self, code, value):
+    def on_key_event(self, code, value, held_keys=frozenset()):
+        rec_combo = self.keybinds.get("record", [])
+
         if self.recorder.recording:
-            if code != self.keybinds.get("record"):
+            if code not in rec_combo:
                 self.recorder.on_key_event(code, value)
 
-        if code == self.keybinds.get("record") and value == 1:
+        if value == 1 and combo_active(held_keys, rec_combo):
             self._toggle_recording()
             return
 
@@ -633,9 +636,11 @@ class MacrosAddon(OHKAddon):
             for macro_name in config.list_macros():
                 data = config.load_macro(macro_name)
                 hotkey = data.get("hotkey")
-                if hotkey is not None and code == hotkey:
-                    self._play_macro(macro_name)
-                    return
+                if hotkey is not None:
+                    hotkey = config._normalize(hotkey)
+                    if combo_active(held_keys, hotkey):
+                        self._play_macro(macro_name)
+                        return
 
     def _toggle_recording(self):
         if self.recorder.recording:
@@ -729,7 +734,7 @@ class MacrosAddon(OHKAddon):
         for name in config.list_macros():
             data = config.load_macro(name)
             hotkey = data.get("hotkey")
-            suffix = f"  [{config.key_name(hotkey)}]" if hotkey else ""
+            suffix = f"  [{combo_name(hotkey)}]" if hotkey else ""
             self._macro_listbox.insert(tk.END, name + suffix)
 
     def _refresh(self):
@@ -748,7 +753,7 @@ class MacrosAddon(OHKAddon):
             if self.app.rebinding == action:
                 btn.config(text="Press a key...", fg="#bf360c")
             else:
-                btn.config(text=config.key_name(self.keybinds[action]), fg="#333333")
+                btn.config(text=combo_name(self.keybinds[action]), fg="#333333")
 
     def _schedule_refresh(self):
         try:

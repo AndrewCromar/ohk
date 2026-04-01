@@ -2,15 +2,19 @@
 
 import os
 import subprocess
+import threading
 import tkinter as tk
 from tkinter import ttk, messagebox
 
 from PIL import ImageTk
 
 from . import config
+from .combo import combo_name
 from .addon_manager import AddonManager
 from .icon import make_icon
 from .input import InputListener
+
+REBIND_TIMEOUT = 0.4  # seconds of no new keys before combo is saved
 
 
 class OHKApp:
@@ -19,6 +23,10 @@ class OHKApp:
         self.rebinding = None
         self.bind_buttons = {}
         self._cps = cps
+
+        # Rebind combo state
+        self._rebind_keys = []
+        self._rebind_timer = None
 
         # Input
         self.input_listener = InputListener()
@@ -51,30 +59,85 @@ class OHKApp:
 
     # ── Input handling ───────────────────────────────────────────────────
 
-    def _on_key_event(self, code, value):
-        # Rebinding mode
+    def _on_key_event(self, code, value, held_keys):
+        # Rebinding mode — collect keys into a combo
         if self.rebinding is not None and value == 1:
-            if self.rebinding == "__macro__" and hasattr(self, "_macro_rebinding"):
-                name = self._macro_rebinding.split("  [")[0]
-                del self._macro_rebinding
+            from evdev import ecodes
+            if code == ecodes.KEY_ESC:
+                # Cancel rebind
                 self.rebinding = None
+                self._rebind_keys = []
+                if self._rebind_timer:
+                    self._rebind_timer.cancel()
+                self._rebind_timer = None
                 try:
-                    data = config.load_macro(name)
-                    data["hotkey"] = code
-                    config.save_macro(name, data)
+                    self.root.after(0, self._refresh_all)
                 except Exception:
                     pass
-                self._refresh_all()
                 return
-            action = self.rebinding
-            self.rebinding = None
-            self.keybinds[action] = code
-            config.save_keybinds(self.keybinds)
-            self._refresh_all()
+
+            # Add key to combo if not already there
+            if code not in self._rebind_keys:
+                self._rebind_keys.append(code)
+
+            # Show current combo in progress
+            try:
+                display = combo_name(self._rebind_keys) + "..."
+                self.root.after(0, lambda: self._update_rebind_display(display))
+            except Exception:
+                pass
+
+            # Reset the timeout — wait for more keys
+            if self._rebind_timer:
+                self._rebind_timer.cancel()
+            self._rebind_timer = threading.Timer(REBIND_TIMEOUT, self._finish_rebind)
+            self._rebind_timer.daemon = True
+            self._rebind_timer.start()
             return
 
         # Forward to all enabled modules/addons
-        self.addon_manager.on_key_event(code, value)
+        self.addon_manager.on_key_event(code, value, held_keys)
+
+    def _update_rebind_display(self, text):
+        """Update all keybind buttons to show the combo being built."""
+        for action, btn in self.bind_buttons.items():
+            if self.rebinding == action:
+                btn.config(text=text, fg="#bf360c")
+
+    def _finish_rebind(self):
+        """Called after timeout — save the collected combo."""
+        combo = list(self._rebind_keys)
+        self._rebind_keys = []
+        self._rebind_timer = None
+
+        if not combo:
+            self.rebinding = None
+            return
+
+        if self.rebinding == "__macro__" and hasattr(self, "_macro_rebinding"):
+            name = self._macro_rebinding.split("  [")[0]
+            del self._macro_rebinding
+            self.rebinding = None
+            try:
+                data = config.load_macro(name)
+                data["hotkey"] = combo
+                config.save_macro(name, data)
+            except Exception:
+                pass
+            try:
+                self.root.after(0, self._refresh_all)
+            except Exception:
+                pass
+            return
+
+        action = self.rebinding
+        self.rebinding = None
+        self.keybinds[action] = combo
+        config.save_keybinds(self.keybinds)
+        try:
+            self.root.after(0, self._refresh_all)
+        except Exception:
+            pass
 
     # ── GUI ──────────────────────────────────────────────────────────────
 
@@ -288,9 +351,10 @@ class OHKApp:
             "  4. Enable it and its tab will show up\n"
             "\n"
             "Keybinds:\n"
-            "  Click any keybind button, then press a key\n"
-            "  to assign it. Keybinds work globally even\n"
-            "  when OHK is not focused.\n"
+            "  Click any keybind button, then press keys\n"
+            "  to assign a combo (e.g. Super+C+W).\n"
+            "  Press Escape to cancel. Keybinds work\n"
+            "  globally even when OHK is not focused.\n"
             "\n"
             "Config is stored in ~/.config/ohk/"
         )

@@ -132,11 +132,17 @@ class AddonManager:
         return [info for info in self.addons.values()
                 if info.enabled and info.instance is not None]
 
-    def on_key_event(self, code, value):
+    def on_key_event(self, code, value, held_keys=frozenset()):
         """Forward key events to all enabled addons."""
         for info in self.get_enabled_addons():
             try:
-                info.instance.on_key_event(code, value)
+                info.instance.on_key_event(code, value, held_keys)
+            except TypeError:
+                # Backward compat for addons that don't accept held_keys
+                try:
+                    info.instance.on_key_event(code, value)
+                except Exception:
+                    pass
             except Exception as e:
                 print(f"Addon '{info.name}' error in on_key_event: {e}")
 

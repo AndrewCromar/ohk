@@ -21,16 +21,28 @@ def find_keyboards():
 class InputListener:
     """Reads raw key events from all keyboards via evdev.
 
-    Calls registered callbacks for key press/release/repeat events.
+    Tracks currently held keys and passes them to callbacks.
+    Callbacks receive: fn(code, value, held_keys)
     """
 
     def __init__(self):
-        self._callbacks = []  # list of (callback_fn,)
+        self._callbacks = []
         self._thread = None
+        self._held = set()
+        self._held_lock = threading.Lock()
 
     def add_callback(self, fn):
-        """Register a callback: fn(code, value) where value is 0=release, 1=press, 2=repeat."""
+        """Register a callback: fn(code, value, held_keys).
+
+        - code: evdev keycode
+        - value: 0=release, 1=press, 2=repeat
+        - held_keys: frozenset of currently held keycodes
+        """
         self._callbacks.append(fn)
+
+    def get_held_keys(self):
+        with self._held_lock:
+            return frozenset(self._held)
 
     def start(self):
         self._thread = threading.Thread(target=self._loop, daemon=True)
@@ -55,5 +67,14 @@ class InputListener:
                 for event in dev.read():
                     if event.type != ecodes.EV_KEY:
                         continue
+
+                    # Track held keys
+                    with self._held_lock:
+                        if event.value == 1:  # press
+                            self._held.add(event.code)
+                        elif event.value == 0:  # release
+                            self._held.discard(event.code)
+                        held = frozenset(self._held)
+
                     for fn in self._callbacks:
-                        fn(event.code, event.value)
+                        fn(event.code, event.value, held)
