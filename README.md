@@ -1,13 +1,23 @@
 # OHK — Onyx Hot Keys
 
-A macro and automation tool for Linux by **ONYX Development**. Think AutoHotKey, but for Linux — works on both X11 and Wayland.
+A modular automation tool for Linux by **ONYX Development**. Think AutoHotKey, but for Linux — works on both X11 and Wayland.
 
 ## Features
 
+All features are **modules** that can be enabled/disabled from the GUI.
+
+### Built-in Modules
+
 - **Autoclicker** — hold a key to spam left or right clicks, configurable CPS (1-200)
-- **Macro Recording** — record keyboard and mouse sequences, replay them with a hotkey
+- **Macros** — record and replay keyboard/mouse sequences with a hotkey, full macro editor
+- **Center Window** — center any window on screen with a hotkey or click-to-select (KDE Wayland)
+- **Key Monitor** — live log of all key events for debugging
+
+### Core
+
 - **Global Hotkeys** — works even when another window is focused (via evdev)
 - **Rebindable Keys** — change any hotkey from the GUI, saved across sessions
+- **Module System** — enable/disable modules, add your own, settings persist across restarts
 - **Desktop Integration** — shows up in your app launcher after install
 
 ## Default Hotkeys
@@ -16,9 +26,8 @@ A macro and automation tool for Linux by **ONYX Development**. Think AutoHotKey,
 |-----|--------|
 | 1 (hold) | Spam left-click |
 | 2 (hold) | Spam right-click |
-| 3 | Pause / Resume |
-| 4 | Quit |
-| F9 | Start / Stop recording |
+| F9 | Start / Stop macro recording |
+| F10 | Center active window |
 
 All hotkeys can be rebound from the GUI.
 
@@ -28,6 +37,7 @@ All hotkeys can be rebound from the GUI.
 - Python 3.8+
 - `tk` system package (for the GUI)
 - User must be in the `input` group (for global hotkeys)
+- KDE Plasma (for Center Window module — uses KWin scripting)
 
 ## Install
 
@@ -57,50 +67,49 @@ python3 -m venv .venv
 .venv/bin/python -m ohk
 ```
 
-### CLI options
+## Modules
 
-```
-python -m ohk [--cps N]    # set default clicks per second (default: 20)
-```
+### Autoclicker
 
-## Macros
+Hold a key to spam mouse clicks at a configurable rate.
 
-1. Press **F9** (or your record key) to start recording
-2. Perform your actions (key presses, mouse clicks)
-3. Press **F9** again to stop — you'll be prompted to name the macro
-4. Assign a hotkey to the macro from the Macros tab
-5. Press the hotkey anytime to replay the macro
+1. Enable from the Modules tab
+2. Set your CPS (clicks per second)
+3. Hold **1** for left-click spam, **2** for right-click spam
+4. Release to stop
 
-Macros are saved to `~/.config/ohk/macros/`.
+### Macros
 
-## Addons
+Record and replay keyboard/mouse sequences.
 
-OHK supports addons — self-contained Python scripts that add new tabs and features.
+1. Press **F9** to start recording
+2. Perform your actions
+3. Press **F9** again to stop — name your macro
+4. Assign a hotkey from the Macros tab
+5. Press the hotkey to replay
 
-### Installing an addon
+The macro editor lets you view, add, remove, reorder events, and edit delays. Select multiple events with shift-click to bulk edit.
 
-Drop an addon folder into `~/.config/ohk/addons/`:
+### Center Window
 
-```
-~/.config/ohk/addons/
-└── my_addon/
-    └── main.py
-```
+Center any window on your screen (KDE Wayland).
 
-Then enable it from the **Addons** tab in OHK and restart.
+- **Hotkey (F10)**: Instantly centers the focused window
+- **Button**: Click "Center a Window", then click on the window to center
 
-### Creating an addon
+## Creating Modules
 
-Create a `main.py` with a class that extends `OHKAddon`:
+Create a folder in `~/.config/ohk/addons/` with a `main.py`:
 
 ```python
 import tkinter as tk
 from ohk.addon import OHKAddon
 
-class MyAddon(OHKAddon):
-    name = "My Addon"
+class MyModule(OHKAddon):
+    name = "My Module"
     description = "What it does"
     version = "1.0"
+    help_text = "Instructions shown in the help dialog"
 
     def build_tab(self, parent):
         frame = tk.Frame(parent, padx=12, pady=12)
@@ -118,7 +127,7 @@ class MyAddon(OHKAddon):
         self.my_setting = data.get("my_setting", "default")
 ```
 
-An example addon (`key_monitor`) is included with the install.
+Enable it from the Modules tab — no restart needed.
 
 ## Uninstall
 
@@ -132,8 +141,8 @@ chmod +x uninstall.sh
 All settings are stored in `~/.config/ohk/`:
 - `keybinds.json` — hotkey assignments
 - `macros/` — saved macro files
-- `addons/` — installed addons
-- `addon_settings.json` — addon enable/disable state and settings
+- `addons/` — installed modules
+- `addon_settings.json` — module enable/disable state and settings
 
 ---
 
