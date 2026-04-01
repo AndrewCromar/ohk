@@ -3,61 +3,11 @@
 import threading
 import time
 
-from evdev import ecodes
+import evdev
+from evdev import ecodes, UInput
 from pynput.mouse import Button, Controller as MouseController
-from pynput.keyboard import Key, Controller as KBController
 
 from . import config
-
-# Map evdev key codes to pynput keys
-_SPECIAL_KEYS = {
-    ecodes.KEY_LEFTSHIFT: Key.shift,
-    ecodes.KEY_RIGHTSHIFT: Key.shift_r,
-    ecodes.KEY_LEFTCTRL: Key.ctrl,
-    ecodes.KEY_RIGHTCTRL: Key.ctrl_r,
-    ecodes.KEY_LEFTALT: Key.alt,
-    ecodes.KEY_RIGHTALT: Key.alt_gr,
-    ecodes.KEY_LEFTMETA: Key.cmd,
-    ecodes.KEY_RIGHTMETA: Key.cmd_r,
-    ecodes.KEY_TAB: Key.tab,
-    ecodes.KEY_ENTER: Key.enter,
-    ecodes.KEY_BACKSPACE: Key.backspace,
-    ecodes.KEY_DELETE: Key.delete,
-    ecodes.KEY_ESC: Key.esc,
-    ecodes.KEY_SPACE: Key.space,
-    ecodes.KEY_UP: Key.up,
-    ecodes.KEY_DOWN: Key.down,
-    ecodes.KEY_LEFT: Key.left,
-    ecodes.KEY_RIGHT: Key.right,
-    ecodes.KEY_HOME: Key.home,
-    ecodes.KEY_END: Key.end,
-    ecodes.KEY_PAGEUP: Key.page_up,
-    ecodes.KEY_PAGEDOWN: Key.page_down,
-    ecodes.KEY_INSERT: Key.insert,
-    ecodes.KEY_CAPSLOCK: Key.caps_lock,
-    ecodes.KEY_F1: Key.f1, ecodes.KEY_F2: Key.f2, ecodes.KEY_F3: Key.f3,
-    ecodes.KEY_F4: Key.f4, ecodes.KEY_F5: Key.f5, ecodes.KEY_F6: Key.f6,
-    ecodes.KEY_F7: Key.f7, ecodes.KEY_F8: Key.f8, ecodes.KEY_F9: Key.f9,
-    ecodes.KEY_F10: Key.f10, ecodes.KEY_F11: Key.f11, ecodes.KEY_F12: Key.f12,
-}
-
-# Evdev code to character for simple keys
-_CHAR_MAP = {}
-for _code, _name in ecodes.KEY.items():
-    if isinstance(_name, list):
-        _name = _name[0]
-    if isinstance(_name, str) and _name.startswith("KEY_") and len(_name) == 5:
-        _CHAR_MAP[_code] = _name[4:].lower()
-
-
-def _evdev_to_pynput(code):
-    """Convert an evdev key code to a pynput key or KeyCode."""
-    from pynput.keyboard import KeyCode as KC
-    if code in _SPECIAL_KEYS:
-        return _SPECIAL_KEYS[code]
-    if code in _CHAR_MAP:
-        return KC.from_char(_CHAR_MAP[code])
-    return None
 
 
 class MacroRecorder:
@@ -112,14 +62,23 @@ class MacroRecorder:
 
 
 class MacroPlayer:
-    """Plays back a recorded macro."""
+    """Plays back a recorded macro using evdev uinput for keys (Wayland compatible)."""
 
     def __init__(self):
         self.playing = False
         self._thread = None
         self._stop_flag = threading.Event()
         self.mouse = MouseController()
-        self.keyboard = KBController()
+        self._uinput = None
+
+    def _get_uinput(self):
+        if self._uinput is None:
+            # Create a virtual keyboard with all standard keys
+            self._uinput = UInput(
+                {ecodes.EV_KEY: list(range(1, 256))},
+                name="OHK Macro Keyboard",
+            )
+        return self._uinput
 
     def play(self, events, speed=1.0, loops=1, on_done=None):
         """Play macro in a background thread. loops=0 means infinite."""
@@ -137,6 +96,7 @@ class MacroPlayer:
         self.playing = False
 
     def _play_loop(self, events, speed, loops, on_done):
+        ui = self._get_uinput()
         iteration = 0
         while loops == 0 or iteration < loops:
             if self._stop_flag.is_set():
@@ -147,7 +107,6 @@ class MacroPlayer:
                     break
                 delay = (evt["time"] - prev_time) / speed
                 if delay > 0:
-                    # Sleep in small chunks so we can respond to stop quickly
                     end = time.monotonic() + delay
                     while time.monotonic() < end:
                         if self._stop_flag.is_set():
@@ -159,13 +118,10 @@ class MacroPlayer:
                     break
 
                 if evt["type"] == "key":
-                    pkey = _evdev_to_pynput(evt["code"])
-                    if pkey is None:
-                        continue
-                    if evt["action"] == "press":
-                        self.keyboard.press(pkey)
-                    else:
-                        self.keyboard.release(pkey)
+                    code = evt["code"]
+                    value = 1 if evt["action"] == "press" else 0
+                    ui.write(ecodes.EV_KEY, code, value)
+                    ui.syn()
                 elif evt["type"] == "mouse_click":
                     self.mouse.position = (evt["x"], evt["y"])
                     btn = {

@@ -12,6 +12,25 @@ class MacrosAddon(OHKAddon):
     name = "Macros"
     description = "Record and replay keyboard/mouse sequences"
     version = "1.0"
+    help_text = (
+        "Macros\n"
+        "\n"
+        "Record keyboard and mouse sequences, then\n"
+        "replay them with a hotkey.\n"
+        "\n"
+        "Recording:\n"
+        "  1. Press F9 (or your Record key) to start\n"
+        "  2. Perform your actions (key presses, etc.)\n"
+        "  3. Press F9 again to stop recording\n"
+        "  4. Enter a name for the macro\n"
+        "\n"
+        "Playback:\n"
+        "  - Select a macro and click Play, or\n"
+        "  - Assign a hotkey with 'Set Hotkey' and\n"
+        "    press that key anytime to replay\n"
+        "\n"
+        "Macros are saved to ~/.config/ohk/macros/"
+    )
 
     def __init__(self, app):
         super().__init__(app)
@@ -188,6 +207,8 @@ class MacrosAddon(OHKAddon):
         else:
             self._rec_status.set("Not recording")
             self._rec_btn.config(text="Record")
+
+        self._refresh_macro_list()
 
         for action, btn in self._bind_buttons.items():
             if self.app.rebinding == action:

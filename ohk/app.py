@@ -165,6 +165,10 @@ class OHKApp:
                                              command=self._toggle_module, width=10)
         self._module_enable_btn.pack(side="left", padx=(0, 4))
 
+        self._module_help_btn = tk.Button(btn_frame, text="Help", font=("monospace", 9),
+                                           command=self._show_module_help, width=6)
+        self._module_help_btn.pack(side="left", padx=(0, 4))
+
         tk.Button(btn_frame, text="Open Modules Folder", font=("monospace", 9),
                   command=self._open_modules_folder).pack(side="left", padx=(0, 4))
 
@@ -224,6 +228,29 @@ class OHKApp:
         self._refresh_module_list()
         self._module_enable_btn.config(text="Disable" if info.enabled else "Enable")
 
+    def _show_module_help(self):
+        sel = self._module_listbox.curselection()
+        if not sel:
+            messagebox.showinfo("Help", "Select a module first.")
+            return
+        folder_name = list(self.addon_manager.addons.keys())[sel[0]]
+        info = self.addon_manager.addons[folder_name]
+        help_text = getattr(info.addon_class, 'help_text', '') or info.description
+
+        help_win = tk.Toplevel(self.root)
+        help_win.title(f"Help — {info.name}")
+        help_win.resizable(False, False)
+        help_win.transient(self.root)
+        help_win.grab_set()
+
+        frame = tk.Frame(help_win, padx=16, pady=16)
+        frame.pack()
+
+        tk.Label(frame, text=help_text, font=("monospace", 10), justify="left",
+                 anchor="w").pack(fill="x", pady=(0, 10))
+        tk.Button(frame, text="Close", font=("monospace", 10),
+                  command=help_win.destroy, width=10).pack()
+
     def _open_modules_folder(self):
         modules_dir = os.path.join(config.CONFIG_DIR, "addons")
         os.makedirs(modules_dir, exist_ok=True)
@@ -253,10 +280,6 @@ class OHKApp:
             "  1. Go to the Modules tab\n"
             "  2. Select a module and click Enable\n"
             "  3. Its tab will appear — configure it there\n"
-            "\n"
-            "Built-in Modules:\n"
-            "  Autoclicker — Hold a key to spam clicks\n"
-            "  Macros — Record and replay key/mouse sequences\n"
             "\n"
             "Adding New Modules:\n"
             "  1. Click 'Open Modules Folder'\n"

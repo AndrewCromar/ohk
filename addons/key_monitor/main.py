@@ -11,6 +11,20 @@ class KeyMonitor(OHKAddon):
     name = "Key Monitor"
     description = "Displays a live log of all key events (press/release)"
     version = "1.0"
+    help_text = (
+        "Key Monitor\n"
+        "\n"
+        "Displays a real-time log of all global key\n"
+        "events (presses and releases).\n"
+        "\n"
+        "Useful for debugging keybinds or seeing\n"
+        "exactly what keys are being detected.\n"
+        "\n"
+        "Settings:\n"
+        "  Max lines — how many lines to keep in\n"
+        "  the log before old ones are removed.\n"
+        "  Click Clear to empty the log."
+    )
 
     def __init__(self, app):
         super().__init__(app)

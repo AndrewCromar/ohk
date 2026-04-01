@@ -26,6 +26,7 @@ class OHKAddon:
     name = "Unnamed Addon"
     description = ""
     version = "1.0"
+    help_text = ""
 
     def __init__(self, app):
         """Called when the addon is loaded. `app` is the OHKApp instance."""

@@ -11,6 +11,23 @@ class AutoclickerAddon(OHKAddon):
     name = "Autoclicker"
     description = "Hold a key to spam left or right clicks"
     version = "1.0"
+    help_text = (
+        "Autoclicker\n"
+        "\n"
+        "Hold a key to spam mouse clicks.\n"
+        "\n"
+        "How to use:\n"
+        "  1. Set your desired CPS (clicks per second)\n"
+        "  2. Hold the Left Click key (default: 1) to\n"
+        "     spam left-clicks at that position\n"
+        "  3. Hold the Right Click key (default: 2) to\n"
+        "     spam right-clicks\n"
+        "  4. Release the key to stop clicking\n"
+        "\n"
+        "Rebinding:\n"
+        "  Click any keybind button, then press the\n"
+        "  key you want to assign. Works globally."
+    )
 
     def __init__(self, app):
         super().__init__(app)
