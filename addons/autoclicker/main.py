@@ -2,13 +2,15 @@
 
 import tkinter as tk
 
-from .. import config
-from ..clicker import Autoclicker, STATE_IDLE, STATE_LEFT, STATE_RIGHT, STATE_PAUSED
-from ..module import OHKModule
+from ohk import config
+from ohk.addon import OHKAddon
+from ohk.clicker import Autoclicker, STATE_IDLE, STATE_LEFT, STATE_RIGHT, STATE_PAUSED
 
 
-class AutoclickerModule(OHKModule):
+class AutoclickerAddon(OHKAddon):
     name = "Autoclicker"
+    description = "Hold a key to spam left or right clicks"
+    version = "1.0"
 
     def __init__(self, app):
         super().__init__(app)
@@ -20,7 +22,7 @@ class AutoclickerModule(OHKModule):
         self._cps_var = None
         self._clicker_legend = None
 
-    def start(self):
+    def on_enable(self):
         self.clicker.start()
 
     def build_tab(self, parent):
@@ -76,14 +78,14 @@ class AutoclickerModule(OHKModule):
         released = value == 0
 
         changed = False
-        if code == kb["left_click"]:
+        if code == kb.get("left_click"):
             if pressed:
                 self.clicker.set_state(STATE_LEFT)
                 changed = True
             elif released and state == STATE_LEFT:
                 self.clicker.set_state(STATE_IDLE)
                 changed = True
-        elif code == kb["right_click"]:
+        elif code == kb.get("right_click"):
             if pressed:
                 self.clicker.set_state(STATE_RIGHT)
                 changed = True
@@ -126,3 +128,9 @@ class AutoclickerModule(OHKModule):
             self.clicker.set_cps(v)
         except ValueError:
             pass
+
+    def get_settings(self):
+        return {"cps": self.clicker.cps}
+
+    def load_settings(self, data):
+        self.clicker.set_cps(data.get("cps", 20))

@@ -3,13 +3,15 @@
 import tkinter as tk
 from tkinter import messagebox, simpledialog
 
-from .. import config
-from ..macros import MacroRecorder, MacroPlayer
-from ..module import OHKModule
+from ohk import config
+from ohk.addon import OHKAddon
+from ohk.macros import MacroRecorder, MacroPlayer
 
 
-class MacrosModule(OHKModule):
+class MacrosAddon(OHKAddon):
     name = "Macros"
+    description = "Record and replay keyboard/mouse sequences"
+    version = "1.0"
 
     def __init__(self, app):
         super().__init__(app)
@@ -85,11 +87,11 @@ class MacrosModule(OHKModule):
     def on_key_event(self, code, value):
         # Feed to recorder if recording (skip record key itself)
         if self.recorder.recording:
-            if code != self.keybinds["record"]:
+            if code != self.keybinds.get("record"):
                 self.recorder.on_key_event(code, value)
 
         # Record toggle
-        if code == self.keybinds["record"] and value == 1:
+        if code == self.keybinds.get("record") and value == 1:
             self._toggle_recording()
             return
 
